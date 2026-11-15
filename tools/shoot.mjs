@@ -31,11 +31,17 @@ const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r);
 await send('Runtime.enable');
 await send('Log.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: +w < 600 });
-await send('Page.navigate', { url: base + hash });
+// hash may be a comma-separated route sequence, followed in-app by setting location.hash
+const hashes = hash.split(',');
+await send('Page.navigate', { url: base + hashes[0] });
 let ready = false;
-for (let i = 0; i < 100 && !ready; i++) {
-  await sleep(300);
-  ready = (await send('Runtime.evaluate', { expression: 'window.__shotReady === true', returnByValue: true }))?.result?.value;
+for (const [n, next] of hashes.entries()) {
+  if (n) await send('Runtime.evaluate', { expression: `location.hash = ${JSON.stringify(next)}` }), await sleep(100);
+  ready = false;
+  for (let i = 0; i < 100 && !ready; i++) {
+    await sleep(300);
+    ready = (await send('Runtime.evaluate', { expression: 'window.__shotReady === true', returnByValue: true }))?.result?.value;
+  }
 }
 await sleep(1200);
 if (+scrollY) await send('Runtime.evaluate', { expression: `scrollTo(0, ${scrollY})` }), await sleep(300);

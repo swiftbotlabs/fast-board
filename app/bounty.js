@@ -39,7 +39,7 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
 <h1>${esc(b.title)}</h1><p class="mute" style="max-width:80ch;margin:.2em 0 .6em">${esc(b.summary || '')}</p>
 <div class="box" style="display:flex;flex-wrap:wrap;gap:12px 32px;align-items:end">
  <div><small>${b.entryFeeUsd ? 'Live pot' : 'Reward'}</small><div class="pot"><span data-f="pot"></span></div><small data-f="potnote" class="${+b.entryFeeUsd ? 'live' : ''}"></small></div>
- <dl class="facts" style="flex:1;min-width:280px;grid-template-columns:repeat(4,auto)">
+ <dl class="facts" style="flex:1;min-width:260px;grid-template-columns:repeat(auto-fit,minmax(105px,1fr))">
   <div><dt>Entry fee</dt><dd>${+b.entryFeeUsd ? money(b.entryFeeUsd) : 'Free'}</dd></div>
   <div><dt>Time left</dt><dd data-ends="${esc(b.deadline)}">${timeLeft(b.deadline)}</dd></div>
   <div><dt>Entries</dt><dd data-f="entries"></dd></div>
@@ -52,14 +52,14 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
  <h2>Description</h2>${markdown(b.description, esc)}
  ${b.rules ? `<details><summary>Full rules (${Math.round(b.rules.length / 1000)}k characters)</summary>${markdown(b.rules, esc)}</details>` : ''}
 </div><aside class="side">
- <section class="box"><h2>Rewards <small data-f="live" class="${+b.entryFeeUsd ? 'live' : ''}">${+b.entryFeeUsd ? 'live, with fees' : ''}</small></h2>
-  <table><thead><tr><th>Place</th><th class="n">Base</th><th class="n">Fee share</th><th class="n">Now</th></tr></thead><tbody data-f="rewards"></tbody></table></section>
  <section class="box"><h2>Dates</h2><table><tbody>
   <tr><th>Opens</th><td>${when(b.opensAt || b.publishedAt)}</td></tr>
   <tr><th>Deadline</th><td>${when(b.deadline)}</td></tr>
   ${b.race?.endsAt ? `<tr><th>Race ends</th><td>${when(b.race.endsAt)}</td></tr>` : ''}
   ${live?.status?.expected_at && live.status.expected_at !== b.deadline ? `<tr><th>Next step</th><td>${when(live.status.expected_at)}</td></tr>` : ''}
   <tr><th>Resolved</th><td>${b.resolvedAt ? when(b.resolvedAt) : 'not yet'}</td></tr></tbody></table></section>
+ <section class="box"><h2>Rewards <small data-f="live" class="${+b.entryFeeUsd ? 'live' : ''}">${+b.entryFeeUsd ? 'live, with fees' : ''}</small></h2>
+  <table><thead><tr><th>Place</th><th class="n">Base</th><th class="n">Fee share</th><th class="n">Now</th></tr></thead><tbody data-f="rewards"></tbody></table></section>
 </aside></div>`;
   const f = (n) => el.querySelector(`[data-f=${n}]`);
   const paint = (d) => {
@@ -67,9 +67,15 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
     patchText(f('potnote'), +d.entryFeesUsd ? `${money(d.rewardAmount)} + ${money(d.entryFeesUsd)} from ${d.entryFeePayers} entry fees, updating live` : `${money(d.rewardAmount)} paid by ${d.sponsor?.name || 'make.fun'}`);
     patchText(f('entries'), (d.submissionCount || 0).toLocaleString('en-US'));
     const rows = Array.isArray(d.rewardsNow) && d.rewardsNow.length ? d.rewardsNow : Object.entries(d.rewards || {}).map(([place, usd]) => ({ place, baseUsd: usd, feeShareUsd: 0, amountUsd: usd }));
-    patchList(f('rewards'), rows, (r) => r.place, () => Object.assign(document.createElement('tr'), { innerHTML: '<td></td><td class="n"></td><td class="n"></td><td class="n"><b></b></td>' }), (tr, r) => {
+    const groups = rows.reduce((g, r) => {
+      const last = g[g.length - 1];
+      if (last && +last.amountUsd === +r.amountUsd && +last.baseUsd === +r.baseUsd) last.to = r.place;
+      else g.push({ ...r, to: r.place });
+      return g;
+    }, []);
+    patchList(f('rewards'), groups, (r) => r.place, () => Object.assign(document.createElement('tr'), { innerHTML: '<td></td><td class="n"></td><td class="n"></td><td class="n"><b></b></td>' }), (tr, r) => {
       const td = tr.children;
-      patchText(td[0], `#${r.place}`, false);
+      patchText(td[0], r.to === r.place ? `#${r.place}` : `#${r.place}–${r.to} each`, false);
       patchText(td[1], money(r.baseUsd));
       patchText(td[2], +r.feeShareUsd ? '+' + money(r.feeShareUsd) : '—');
       patchText(td[3].firstChild, money(r.amountUsd));

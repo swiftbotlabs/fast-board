@@ -26,8 +26,8 @@ export async function renderLeaderboard(slug, { cachedFetch, patchList, patchTex
   ]);
   const prize = new Map((b.rewardsNow || []).map((r) => [+r.place, r.amountUsd]));
   const el = document.createElement('article');
-  el.innerHTML = `<p class="top" style="justify-content:flex-start"><a href="#/">← All bounties</a><a href="#/bounty/${esc(slug)}">${esc(b.title)}</a></p>
-<h1>Leaderboard</h1>
+  el.innerHTML = `<p class="top" style="justify-content:flex-start"><a href="#/">← All bounties</a><a href="#/bounty/${esc(slug)}">Bounty page</a></p>
+<h1>Leaderboard · <a href="#/bounty/${esc(slug)}" style="color:inherit">${esc(b.title)}</a></h1>
 <p><span class="pot" style="font-size:1.4rem">${money(b.potUsd || b.rewardAmount)}</span> <small class="${+b.entryFeesUsd ? 'live' : ''}">${+b.entryFeesUsd ? 'live pot' : 'reward'} · ${esc(lb.phase || '')} phase · ${lb.rows.length.toLocaleString('en-US')} ranked entries${lb.held ? ' · places unofficial until results publish' : ''}</small></p>
 <div class="bar"><label>Find entrant or entry <input type="search" data-f="q" placeholder="handle or title"></label>
  <button data-f="prev">← Prev</button><span data-f="where" aria-live="polite"></span><button data-f="next">Next →</button></div>

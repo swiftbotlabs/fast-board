@@ -99,7 +99,7 @@ async function renderBoard() {
       patchText(state, left <= 0 ? 'Entries closed' : soon ? 'Upcoming' : left < 864e5 ? 'Closing soon' : 'Open', false);
       patchText(f('pot'), money(c.pot));
       f('potnote').className = c.fees ? 'live' : '';
-      patchText(f('potnote'), c.fees ? `live pot · +${money(c.fees)} from ${c.payers} fees` : 'reward', false);
+      patchText(f('potnote'), c.fees ? `live · +${money(c.fees)} fees` : 'reward', false);
       patchText(f('fee'), c.fee ? money(c.fee) : 'Free', false);
       const clock = li.querySelector('[data-ends]');
       clock.dataset.ends = soon ? c.opens : c.ends;
