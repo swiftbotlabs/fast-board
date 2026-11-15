@@ -1,10 +1,11 @@
 // public profile, loaded by import(): one cached request (API sends max-age=120 + ETag), record cards and entries listed 20 at a time through keyed patchList
-const STEP = 20;
+const PAGE_SIZE = 20;
+const profileApi = (handle) => `/profiles/${encodeURIComponent(handle)}`;
 
 /** An account's public profile: picture, links, record (entered, placed, won, prizes) and its entries. */
 export async function renderProfile(handle, { cachedFetch, patchList, patchText, money, esc }) {
   const h = encodeURIComponent(handle);
-  const p = await cachedFetch(`/profiles/${h}`, { ttl: 120000 });
+  const p = await cachedFetch(profileApi(handle), { ttl: 120000 });
   const r = p.record || {}, entries = p.solutions || [];
   const el = document.createElement('article');
   el.innerHTML = `<p class="top" style="justify-content:flex-start"><a href="#/">← All bounties</a></p>
@@ -21,7 +22,7 @@ ${p.bio ? `<p>${esc(p.bio)}</p>` : ''}
 <h2>Entries <small>(${entries.length})</small></h2>
 <div style="overflow:auto"><table><thead><tr><th>Bounty</th><th class="t">Entry</th><th class="n">Score</th><th class="n">Place</th><th class="n">Prize</th><th class="t">Entered</th></tr></thead><tbody data-f="rows"></tbody></table></div>
 <p><button data-f="more">Show more entries</button></p>`;
-  let shown = STEP;
+  let shown = PAGE_SIZE;
   const more = el.querySelector('[data-f=more]');
   const draw = () => {
     patchList(el.querySelector('[data-f=rows]'), entries.slice(0, shown), (s) => s.submission_id, () => Object.assign(document.createElement('tr'), { innerHTML: '<td><a></a><br><small></small></td><td class="t"></td><td class="n"></td><td class="n"></td><td class="n"></td><td class="t"></td>' }), (tr, s) => {
@@ -37,7 +38,7 @@ ${p.bio ? `<p>${esc(p.bio)}</p>` : ''}
     });
     more.hidden = shown >= entries.length;
   };
-  more.onclick = () => { shown += STEP; draw(); };
+  more.onclick = () => { shown += PAGE_SIZE; draw(); };
   draw();
   return { el, title: `${p.display_name || p.handle} · make.fun profile` };
 }

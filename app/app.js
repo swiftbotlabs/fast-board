@@ -1,19 +1,21 @@
-// board + router, the only first-load module: cachedFetch (memory + sessionStorage, ETag If-None-Match revalidation, in-flight dedupe), keyed patchList, one shared timeLeft ticker; other views import() on demand
+// board + router, the only first-load module: cachedFetch (memory + sessionStorage, ETag revalidation via the HTTP cache, in-flight dedupe), keyed patchList, one shared timeLeft ticker; other views import() on demand
 const API = 'https://make.fun/api';
+const boardApi = '/competitions?status=open&activity=times';
 const app = document.getElementById('app');
 const cache = { mem: new Map(), inflight: new Map(), network: 0, revalidated: 0, hits: 0 };
 let board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false };
 
-/** GET an API path once: fresh copies (ttl ms) come from memory or sessionStorage; older ones revalidate with If-None-Match (304 keeps the copy). */
+/** GET an API path once: fresh copies (ttl ms) come from memory or sessionStorage; older ones revalidate by ETag (cache: 'no-cache' makes the browser send If-None-Match; make.fun's 304 lacks CORS headers when sent by hand) and an unchanged ETag reuses the parsed copy. */
 async function cachedFetch(path, { ttl = 30000, shape = (json) => json } = {}) {
   let hit = cache.mem.get(path);
   if (!hit) try { hit = JSON.parse(sessionStorage.getItem('mf:' + path)); } catch {}
   if (hit && Date.now() - hit.at < ttl) return cache.hits++, meter(), hit.data;
   if (cache.inflight.has(path)) return cache.inflight.get(path);
-  const request = fetch(API + path, { headers: hit?.etag ? { 'If-None-Match': hit.etag } : {} })
+  const get = () => fetch(API + path, { cache: 'no-cache' }).then((res) => (cache.network++, res));
+  const request = get()
+    .then((res) => res.status >= 500 ? new Promise((ok) => setTimeout(ok, 1500)).then(get) : res)
     .then(async (res) => {
-      cache.network++;
-      if (res.status === 304 && hit) cache.revalidated++, hit.at = Date.now();
+      if (res.ok && hit?.etag && res.headers.get('ETag') === hit.etag) cache.revalidated++, hit.at = Date.now();
       else if (res.ok) hit = { etag: res.headers.get('ETag'), at: Date.now(), data: shape(await res.json()) };
       else if (!hit) throw new Error(res.status === 404 ? 'Not found on make.fun' : res.status === 429 ? 'make.fun rate limit reached, try again in a minute' : `make.fun answered ${res.status}`);
       cache.mem.set(path, hit);
@@ -33,7 +35,7 @@ function timeLeft(iso) {
   const d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60, p = (n) => String(n).padStart(2, '0');
   return d ? `${d}d ${p(h)}h ${p(m)}m` : `${h}h ${p(m)}m ${p(s % 60)}s`;
 }
-setInterval(() => document.querySelectorAll('[data-ends]').forEach((el) => patchText(el, timeLeft(el.dataset.ends), false)), 1000);
+const timeLeftTicker = setInterval(() => document.querySelectorAll('[data-ends]').forEach((el) => patchText(el, timeLeft(el.dataset.ends), false)), 1000);
 
 /** Keyed DOM update: reuse each item's node by key, create only new ones, move only misplaced ones, drop the gone. */
 function patchList(parent, items, key, make, update) {
@@ -63,7 +65,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 
 /** Board: open bounties as keyed cards (live pot biggest, then fee, time left, entries); sort/filter reorders nodes, a 60 s revalidation patches them. */
 async function renderBoard() {
-  const load = () => cachedFetch('/competitions?status=open&activity=times', {
+  const load = () => cachedFetch(boardApi, {
     shape: (j) => j.items.map((c) => ({
       slug: c.slug, title: c.title, category: c.category, pot: +c.potUsd || c.rewardAmount, fees: +c.entryFeesUsd || 0, fee: +c.entryFeeUsd || 0,
       payers: c.entryFeePayers, ends: c.deadline, opens: c.opensAt || c.publishedAt, entries: c.submissionCount,
@@ -128,18 +130,18 @@ async function renderBoard() {
 function meter() {
   const res = performance.getEntriesByType('resource'), nav = performance.getEntriesByType('navigation')[0];
   const bytes = res.reduce((s, r) => s + (r.transferSize || 0), nav?.transferSize || 0);
-  document.getElementById('meter').textContent = `This visit: ${res.length + 1} requests, ${(bytes / 1024).toFixed(1)} KB measured by the Performance API · API: ${cache.network} network (${cache.revalidated} answered 304 by ETag), ${cache.hits} served from cache · live data from make.fun`;
+  document.getElementById('meter').textContent = `This visit: ${res.length + 1} requests, ${(bytes / 1024).toFixed(1)} KB measured by the Performance API · API: ${cache.network} network (${cache.revalidated} unchanged by ETag), ${cache.hits} served from cache · live data from make.fun`;
 }
 
 const tools = { cachedFetch, patchList, patchText, timeLeft, money, esc };
-let current = null, seq = 0;
+const nav = { view: null, seq: 0 };
 
 /** Hash router: #/ board, #/bounty/<slug>, #/bounty/<slug>/leaderboard, #/u/<handle>; views other than the board are import()ed on demand. */
 async function route() {
-  const my = ++seq;
+  const my = ++nav.seq;
   window.__shotReady = false;
-  current?.cleanup?.();
-  current = null;
+  nav.view?.cleanup?.();
+  nav.view = null;
   const [, kind, id, sub] = location.hash.split('/').map((s) => decodeURIComponent(s || ''));
   let view;
   try {
@@ -149,11 +151,12 @@ async function route() {
       : await renderBoard();
   } catch (error) {
     const el = document.createElement('section');
-    el.innerHTML = `<h1>Could not load this page</h1><p>${esc(error.message)}</p><p><a href="#/">Back to the board</a></p>`;
+    el.innerHTML = `<h1>Could not load this page</h1><p>${esc(error.message)}</p><p><button>Try again</button> <a href="#/">Back to the board</a></p>`;
+    el.querySelector('button').onclick = route;
     view = { el, title: 'Error · make.fun bounties' };
   }
-  if (my !== seq) return view.cleanup?.();
-  current = view;
+  if (my !== nav.seq) return view.cleanup?.();
+  nav.view = view;
   app.replaceChildren(view.el);
   document.title = view.title;
   scrollTo(0, 0);

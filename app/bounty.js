@@ -1,5 +1,7 @@
 // bounty page, loaded by import(): one cached detail request (+ /live status); livePot listens to the /live/stream SSE and patches pot, entries and rewards rows in place (60 s polling if the stream drops)
-const when = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—';
+const bountyApi = (slug) => `/competitions/${encodeURIComponent(slug)}?submissions=summary`;
+const liveApi = (slug) => `/competitions/${encodeURIComponent(slug)}/live`;
+const utcDate = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—';
 
 /** Small, safe Markdown for descriptions and rules: headings, lists, code, tables, links, bold. */
 export function markdown(md, esc) {
@@ -30,8 +32,8 @@ export function markdown(md, esc) {
 
 /** One bounty: summary, live pot, fee, time left, entries, description, rules, rewards table, dates and status. */
 export async function renderBounty(slug, { cachedFetch, patchList, patchText, timeLeft, money, esc }) {
-  const path = `/competitions/${encodeURIComponent(slug)}?submissions=summary`;
-  const [b, live] = await Promise.all([cachedFetch(path), cachedFetch(`/competitions/${encodeURIComponent(slug)}/live`, { ttl: 20000 }).catch(() => null)]);
+  const path = bountyApi(slug);
+  const [b, live] = await Promise.all([cachedFetch(path), cachedFetch(liveApi(slug), { ttl: 20000 }).catch(() => null)]);
   const ended = Date.parse(b.deadline) <= Date.now(), upcoming = Date.parse(b.opensAt || b.publishedAt) > Date.now();
   const state = b.resolvedAt || b.status === 'resolved' ? ['Resolved', 'open'] : ended ? ['Entries closed', 'shut'] : upcoming ? ['Upcoming', 'soon'] : ['Open for entries', 'open'];
   const el = document.createElement('article');
@@ -53,11 +55,11 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
  ${b.rules ? `<details><summary>Full rules (${Math.round(b.rules.length / 1000)}k characters)</summary>${markdown(b.rules, esc)}</details>` : ''}
 </div><aside class="side">
  <section class="box"><h2>Dates</h2><table><tbody>
-  <tr><th>Opens</th><td>${when(b.opensAt || b.publishedAt)}</td></tr>
-  <tr><th>Deadline</th><td>${when(b.deadline)}</td></tr>
-  ${b.race?.endsAt ? `<tr><th>Race ends</th><td>${when(b.race.endsAt)}</td></tr>` : ''}
-  ${live?.status?.expected_at && live.status.expected_at !== b.deadline ? `<tr><th>Next step</th><td>${when(live.status.expected_at)}</td></tr>` : ''}
-  <tr><th>Resolved</th><td>${b.resolvedAt ? when(b.resolvedAt) : 'not yet'}</td></tr></tbody></table></section>
+  <tr><th>Opens</th><td>${utcDate(b.opensAt || b.publishedAt)}</td></tr>
+  <tr><th>Deadline</th><td>${utcDate(b.deadline)}</td></tr>
+  ${b.race?.endsAt ? `<tr><th>Race ends</th><td>${utcDate(b.race.endsAt)}</td></tr>` : ''}
+  ${live?.status?.expected_at && live.status.expected_at !== b.deadline ? `<tr><th>Next step</th><td>${utcDate(live.status.expected_at)}</td></tr>` : ''}
+  <tr><th>Resolved</th><td>${b.resolvedAt ? utcDate(b.resolvedAt) : 'not yet'}</td></tr></tbody></table></section>
  <section class="box"><h2>Rewards <small data-f="live" class="${+b.entryFeeUsd ? 'live' : ''}">${+b.entryFeeUsd ? 'live, with fees' : ''}</small></h2>
   <table><thead><tr><th>Place</th><th class="n">Base</th><th class="n">Fee share</th><th class="n">Now</th></tr></thead><tbody data-f="rewards"></tbody></table></section>
 </aside></div>`;
@@ -86,11 +88,15 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
   return { el, title: `${b.title} · ${money(b.potUsd || b.rewardAmount)} · make.fun bounties`, cleanup: stop };
 }
 
-/** Live pot: one EventSource on /live/stream; each standings (entry or fee) event re-reads the detail (ETag-revalidated) at most every 5 s; falls back to 60 s polling. */
+/** Live pot: one EventSource on /live/stream; a standings (entry or fee) event re-reads the detail just after the minute turns (make.fun's answers and ETags hold for a minute), so at most one request a minute; falls back to 60 s polling. */
 export function livePot(slug, refresh) {
-  let last = 0, timer = 0, poll = 0;
-  const soon = () => { clearTimeout(timer); timer = setTimeout(() => { last = Date.now(); refresh().catch(() => {}); }, Math.max(0, 5000 - (Date.now() - last))); };
-  const stream = 'EventSource' in window ? new EventSource(`https://make.fun/api/competitions/${encodeURIComponent(slug)}/live/stream`) : null;
+  let last = Date.now(), timer = 0, poll = 0;
+  const soon = () => {
+    if (timer) return;
+    const turn = (Math.floor(last / 60000) + 1) * 60000 + 2000;
+    timer = setTimeout(() => { timer = 0; last = Date.now(); refresh().catch(() => {}); }, Math.max(1000, turn - Date.now()));
+  };
+  const stream = 'EventSource' in window ? new EventSource(`https://make.fun/api${liveApi(slug)}/stream`) : null;
   stream?.addEventListener('standings', soon);
   stream?.addEventListener('phase', soon);
   stream?.addEventListener('reset', soon);

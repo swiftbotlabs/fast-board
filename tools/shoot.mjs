@@ -10,6 +10,7 @@ const [base, out, hash, w = '1280', h = '800', scrollY = '0'] = process.argv.sli
 const port = 9300 + Math.floor(Math.random() * 500);
 const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--no-first-run', '--hide-scrollbars',
   `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { chrome.kill(); process.exit(1); });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
 for (let i = 0; i < 50 && !target; i++) {
@@ -30,6 +31,7 @@ ws.addEventListener('message', (e) => {
 const send = (method, params = {}) => new Promise((r) => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });
 await send('Runtime.enable');
 await send('Log.enable');
+if (process.env.DARK) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: +w < 600 });
 // hash may be a comma-separated route sequence, followed in-app by setting location.hash
 const hashes = hash.split(',');
@@ -44,6 +46,12 @@ for (const [n, next] of hashes.entries()) {
   }
 }
 await sleep(1200);
+if (process.env.WAIT) {
+  const pot = async () => (await send('Runtime.evaluate', { expression: 'document.querySelector("[data-f=pot]")?.textContent + " | entries " + document.querySelector("[data-f=entries]")?.textContent + " | flashes " + document.querySelectorAll(".flash").length + " |" + document.getElementById("meter").textContent.split("·")[1]', returnByValue: true }))?.result?.value;
+  console.log('before:', await pot());
+  await sleep(+process.env.WAIT);
+  console.log('after: ', await pot());
+}
 if (+scrollY) await send('Runtime.evaluate', { expression: `scrollTo(0, ${scrollY})` }), await sleep(300);
 const info = await send('Runtime.evaluate', { expression: 'JSON.stringify({title: document.title, h1: document.querySelector("h1")?.textContent, text: document.querySelector("main").innerText.slice(0, 400), meter: document.getElementById("meter").textContent, overflow: document.documentElement.scrollWidth > innerWidth})', returnByValue: true });
 console.log('ready:', ready, info?.result?.value);

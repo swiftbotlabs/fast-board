@@ -1,11 +1,12 @@
 // leaderboard, loaded by import(): one ?rows=first request shaped small before caching (sessionStorage + ETag), reuses the cached bounty detail for prizes; pageLeaderboard shows 50 rows a page through keyed patchList
-const PAGE = 50;
+const PAGE_SIZE = 50;
+const leaderboardApi = (slug) => `/competitions/${encodeURIComponent(slug)}/leaderboard?rows=first`;
 
 /** One page of the (optionally filtered) ranked rows, and the page count. */
 export function pageLeaderboard(rows, page, query) {
   const q = query.trim().toLowerCase(), hits = q ? rows.filter((r) => r.handle.toLowerCase().includes(q) || r.title.toLowerCase().includes(q)) : rows;
-  const pages = Math.max(1, Math.ceil(hits.length / PAGE)), at = Math.min(Math.max(1, page), pages);
-  return { rows: hits.slice((at - 1) * PAGE, at * PAGE), page: at, pages, total: hits.length };
+  const pages = Math.max(1, Math.ceil(hits.length / PAGE_SIZE)), at = Math.min(Math.max(1, page), pages);
+  return { rows: hits.slice((at - 1) * PAGE_SIZE, at * PAGE_SIZE), page: at, pages, total: hits.length };
 }
 
 /** A bounty's ranked entries: rank, entrant (links to the profile), entry, score, prize. */
@@ -13,7 +14,7 @@ export async function renderLeaderboard(slug, { cachedFetch, patchList, patchTex
   const s = encodeURIComponent(slug);
   const [b, lb] = await Promise.all([
     cachedFetch(`/competitions/${s}?submissions=summary`),
-    cachedFetch(`/competitions/${s}/leaderboard?rows=first`, {
+    cachedFetch(leaderboardApi(slug), {
       ttl: 60000,
       shape: (j) => {
         const col = j.columns?.find((c) => c.key === j.rank_key)?.title || j.rank_key || 'Score';
