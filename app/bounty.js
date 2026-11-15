@@ -48,7 +48,7 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
   <div><dt>Status</dt><dd><span class="pill ${state[1]}">${state[0]}</span></dd></div></dl>
  <div class="bar" style="margin:0"><a href="#/bounty/${esc(slug)}/leaderboard"><b>Leaderboard →</b></a><a href="https://make.fun/bounty/${esc(slug)}" rel="noopener">Open on make.fun</a></div>
 </div>
-<div class="cols"><div class="prose">
+<div class="cols" style="margin-top:16px"><div class="prose">
  ${live?.status?.sentence ? `<p><b>Now:</b> ${esc(live.status.sentence)}</p>` : ''}
  ${b.resolution?.summary ? `<h2>How it is judged</h2><p>${esc(b.resolution.summary)}</p>` : ''}
  <h2>Description</h2>${markdown(b.description, esc)}
@@ -75,9 +75,11 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
       else g.push({ ...r, to: r.place });
       return g;
     }, []);
-    patchList(f('rewards'), groups, (r) => r.place, () => Object.assign(document.createElement('tr'), { innerHTML: '<td></td><td class="n"></td><td class="n"></td><td class="n"><b></b></td>' }), (tr, r) => {
+    patchList(f('rewards'), groups, (r) => r.place, () => Object.assign(document.createElement('tr'), { innerHTML: '<td><span></span> <small></small></td><td class="n"></td><td class="n"></td><td class="n"><b></b></td>' }), (tr, r) => {
       const td = tr.children;
-      patchText(td[0], r.to === r.place ? `#${r.place}` : `#${r.place}–${r.to} each`, false);
+      td[0].firstChild.className = 'rk' + (r.place < 4 ? ' p p' + r.place : '');
+      patchText(td[0].firstChild, r.to === r.place ? r.place : `${r.place}–${r.to}`, false);
+      patchText(td[0].lastChild, r.to === r.place ? '' : 'each', false);
       patchText(td[1], money(r.baseUsd));
       patchText(td[2], +r.feeShareUsd ? '+' + money(r.feeShareUsd) : '—');
       patchText(td[3].firstChild, money(r.amountUsd));

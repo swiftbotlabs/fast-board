@@ -9,7 +9,7 @@ export function pageLeaderboard(rows, page, query) {
   return { rows: hits.slice((at - 1) * PAGE_SIZE, at * PAGE_SIZE), page: at, pages, total: hits.length };
 }
 
-/** A bounty's ranked entries: rank, entrant (links to the profile), entry, score, prize. */
+/** A bounty's ranked entries: pot and prize summary, then rank (top 3 marked), entrant (links to the profile), entry, score, prize. */
 export async function renderLeaderboard(slug, { cachedFetch, patchList, patchText, money, esc }) {
   const s = encodeURIComponent(slug);
   const [b, lb] = await Promise.all([
@@ -29,10 +29,15 @@ export async function renderLeaderboard(slug, { cachedFetch, patchList, patchTex
   const el = document.createElement('article');
   el.innerHTML = `<p class="top" style="justify-content:flex-start"><a href="#/">← All bounties</a><a href="#/bounty/${esc(slug)}">Bounty page</a></p>
 <h1>Leaderboard · <a href="#/bounty/${esc(slug)}" style="color:inherit">${esc(b.title)}</a></h1>
-<p><span class="pot" style="font-size:1.4rem">${money(b.potUsd || b.rewardAmount)}</span> <small class="${+b.entryFeesUsd ? 'live' : ''}">${+b.entryFeesUsd ? 'live pot' : 'reward'} · ${esc(lb.phase || '')} phase · ${lb.rows.length.toLocaleString('en-US')} ranked entries${lb.held ? ' · places unofficial until results publish' : ''}</small></p>
+<div class="box" style="display:flex;flex-wrap:wrap;gap:12px 32px;align-items:end;margin:10px 0">
+ <div><small class="${+b.entryFeesUsd ? 'live' : ''}">${+b.entryFeesUsd ? 'Live pot' : 'Reward'}</small><div class="pot">${money(b.potUsd || b.rewardAmount)}</div></div>
+ <dl class="facts big" style="flex:1;min-width:260px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+  <div><dt>Ranked entries</dt><dd>${lb.rows.length.toLocaleString('en-US')}</dd></div><div><dt>Paid places</dt><dd>${prize.size || '—'}</dd></div>
+  <div><dt>Top prize</dt><dd class="open">${prize.has(1) ? money(prize.get(1)) : '—'}</dd></div><div><dt>Phase</dt><dd>${esc(lb.phase || '—')}</dd></div></dl></div>
+${lb.held ? '<p class="mute">Places are unofficial until the results publish.</p>' : ''}
 <div class="bar"><label>Find entrant or entry <input type="search" data-f="q" placeholder="handle or title"></label>
  <button data-f="prev">← Prev</button><span data-f="where" aria-live="polite"></span><button data-f="next">Next →</button></div>
-<div style="overflow:auto"><table><thead><tr><th class="n">Rank</th><th>Entrant</th><th class="t">Entry</th><th class="n">${esc(lb.col)}</th><th class="n">Prize</th></tr></thead><tbody data-f="rows"></tbody></table></div>
+<div style="overflow:auto"><table><thead><tr><th>Rank</th><th>Entrant</th><th class="t">Entry</th><th class="n">${esc(lb.col)}</th><th class="n">Prize</th></tr></thead><tbody data-f="rows"></tbody></table></div>
 ${lb.rows.length ? '' : `<p class="box">${lb.visible ? 'No ranked entries yet.' : 'Placements are held until the results publish: make.fun lists no entries yet.'}</p>`}`;
   const f = (n) => el.querySelector(`[data-f=${n}]`);
   let page = 1;
@@ -42,8 +47,9 @@ ${lb.rows.length ? '' : `<p class="box">${lb.visible ? 'No ranked entries yet.' 
     patchText(f('where'), `Page ${view.page} of ${view.pages} · ${view.total.toLocaleString('en-US')} rows`, false);
     f('prev').disabled = view.page <= 1;
     f('next').disabled = view.page >= view.pages;
-    patchList(f('rows'), view.rows, (r) => r.id, () => Object.assign(document.createElement('tr'), { innerHTML: '<td class="n"><b></b></td><td><a></a> <small></small></td><td class="t"></td><td class="n"></td><td class="n"></td>' }), (tr, r) => {
+    patchList(f('rows'), view.rows, (r) => r.id, () => Object.assign(document.createElement('tr'), { innerHTML: '<td><span></span></td><td style="white-space:nowrap"><a></a> <small></small></td><td class="t"></td><td class="n"></td><td class="n"></td>' }), (tr, r) => {
       const [rank, who, entry, score, pay] = tr.children;
+      rank.firstChild.className = 'rk' + (r.rank > 0 && r.rank < 4 ? ' p p' + r.rank : '');
       patchText(rank.firstChild, r.rank ?? '—', false);
       who.firstChild.href = `#/u/${encodeURIComponent(r.handle)}`;
       patchText(who.firstChild, r.handle, false);
