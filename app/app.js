@@ -103,6 +103,7 @@ async function renderBoard() {
       patchText(f('fee'), c.fee ? money(c.fee) : 'Free', false);
       const clock = li.querySelector('[data-ends]');
       clock.dataset.ends = soon ? c.opens : c.ends;
+      f('when').className = left > 0 ? 'live' : '';
       patchText(f('when'), soon ? 'Opens in' : 'Time left', false);
       patchText(clock, timeLeft(clock.dataset.ends), false);
       patchText(f('entries'), c.entries.toLocaleString('en-US'));

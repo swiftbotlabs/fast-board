@@ -23,14 +23,14 @@ Four hash routes, all handled by `route()` in `app/app.js`:
 - `#/bounty/<slug>/leaderboard`: the ranked entries (`renderLeaderboard`, in `leaderboard.js`)
 - `#/u/<handle>`: a public profile (`renderProfile`, in `profile.js`)
 
-The first load is 2 files: `index.html` and `app.js`, 16,236 bytes raw or 6,492 bytes gzip-9. The three other views add 17,161 bytes raw (7,317 gzip-9) between them, fetched only when opened.
+The first load is 2 files: `index.html` and `app.js`, 16,288 bytes raw or 6,503 bytes gzip-9. The three other views add 17,161 bytes raw (7,317 gzip-9) between them, fetched only when opened.
 
 Speed techniques, named as they are in the code:
 
 - **`import()` per view**: only the board and router load up front. `bounty.js`, `leaderboard.js` and `profile.js` load the first time you open one of those views.
 - **`cachedFetch`**: keeps each API answer in memory and in `sessionStorage`, merges requests already in flight for the same path, and revalidates stale copies by ETag through the HTTP cache. If the ETag hasn't changed, it reuses the copy it already parsed. It retries once on a 5xx error.
 - **`patchList` / `patchText`**: keyed DOM updates. Existing cards and rows are kept, moved only when out of place, and their text is rewritten only when it changed. A value that changes flashes briefly.
-- **`timeLeftTicker`**: a single one-second interval updates every `[data-ends]` countdown on the page.
+- **`timeLeftTicker`**: a single one-second interval updates every `[data-ends]` countdown on the page. On the board, a pulsing dot beside "Time left" marks the countdowns that are live.
 - **`livePot`**: on a bounty page, one `EventSource` on make.fun's live stream signals new entries and fees. The page then re-reads the detail at most once a minute, and falls back to 60-second polling if the stream drops. The board itself revalidates every 60 seconds.
 - **Small shaped payloads**: the board and leaderboard trim API answers before caching them (`leaderboardApi` asks for `?rows=first`). `pageLeaderboard` shows 50 rows at a time and the profile shows 20 entries at a time.
 - **Inline CSS and `preconnect`** to make.fun in `index.html`, so nothing blocks the first paint.
