@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/makefun-frontend-01/swiftbotlabs/fast-board/rank.svg)](https://make.fun/bounty/makefun-frontend-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=makefun-frontend-01)
 [![reward](https://make.fun/badge/makefun-frontend-01/swiftbotlabs/fast-board/reward.svg)](https://make.fun/bounty/makefun-frontend-01?utm_source=github&utm_medium=readme&utm_campaign=makefun-frontend-01)
 
-A frontend for make.fun's open bounties, built from plain static files with no build step. It shows a board of live pots, entry fees and countdowns, a page for each bounty, its leaderboard, and public profiles, all read straight from make.fun's public API. It stays fast because the first load is just one HTML page with inline CSS plus one script. Other views load only when you open them. API answers are cached and revalidated by ETag, and live updates change only the DOM nodes whose values changed.
+A frontend for make.fun's open bounties, built from plain static files with no build step. It shows a board of live pots, entry fees and countdowns that you can search and filter by category, a page for each bounty, its leaderboard, and public profiles, all read straight from make.fun's public API. It stays fast because the first load is just one HTML page with inline CSS plus one script. Other views load only when you open them. API answers are cached and revalidated by ETag, and live updates change only the DOM nodes whose values changed.
 
 ## Run it
 
@@ -18,12 +18,12 @@ Then open http://localhost:8080 (add `--port <n>` to use a different port). Use 
 
 Four hash routes, all handled by `route()` in `app/app.js`:
 
-- `#/`: the board (`renderBoard`, in `app.js`)
+- `#/`: the board (`renderBoard`, in `app.js`), with a search box, category chips and sort buttons in the top bar. A bounty counts as closed once its deadline passes, even while the API still says open, and its card flips at that moment
 - `#/bounty/<slug>`: one bounty with its rewards and rules (`renderBounty`, in `bounty.js`)
 - `#/bounty/<slug>/leaderboard`: the ranked entries (`renderLeaderboard`, in `leaderboard.js`)
 - `#/u/<handle>`: a public profile (`renderProfile`, in `profile.js`)
 
-The first load is 2 files: `index.html` and `app.js`, 16,288 bytes raw or 6,503 bytes gzip-9. The three other views add 17,161 bytes raw (7,317 gzip-9) between them, fetched only when opened.
+The first load is 2 files: `index.html` and `app.js`, 17,700 bytes raw or 6,984 bytes gzip-9. The three other views add 17,161 bytes raw (7,317 gzip-9) between them, fetched only when opened.
 
 Speed techniques, named as they are in the code:
 
@@ -36,4 +36,4 @@ Speed techniques, named as they are in the code:
 - **Inline CSS and `preconnect`** to make.fun in `index.html`, so nothing blocks the first paint.
 - **`perfMeter`**: the footer shows this visit's requests and bytes, measured by the Performance API, plus how many API calls the cache saved.
 
-`node main.ts` packages `app/` and `screenshots/` with `dossier.json` for judging (set `MAKEFUN_OUTPUT_DIR=out` to write it somewhere other than `/output`).
+`node main.ts` packages `app/` and `screenshots/` with `dossier.json` for judging (set `MAKEFUN_OUTPUT_DIR=out` to write it somewhere other than `/output`). It first checks that `app/index.html` exists and that `screenshots/` holds 1 to 3 `.jpg` or `.png` files of at most 256 KiB each, and stops with a message if not. When it is done, it prints one line: the files copied, the screenshots and the size of `dossier.json`.
