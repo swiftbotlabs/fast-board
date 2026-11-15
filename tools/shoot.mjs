@@ -2,15 +2,19 @@
 // reports console errors and saves JPEG screenshots.
 // usage: node tools/shoot.mjs <baseUrl> <outFile|-> <hash> [width] [height] [scrollY]
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const [base, out, hash, w = '1280', h = '800', scrollY = '0'] = process.argv.slice(2);
 const port = 9300 + Math.floor(Math.random() * 500);
+const profile = mkdtempSync(join(tmpdir(), 'cdp-'));
 const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--no-first-run', '--hide-scrollbars',
-  `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { chrome.kill(); process.exit(1); });
+  `--user-data-dir=${profile}`, `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
+// each run gets a fresh Chrome profile (~150 MB); remove it once Chrome has exited
+chrome.on('exit', () => rmSync(profile, { recursive: true, force: true }));
+const quit = (code) => { chrome.kill(); chrome.exitCode !== null || chrome.signalCode ? process.exit(code) : chrome.once('exit', () => process.exit(code)); };
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => quit(1));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
 for (let i = 0; i < 50 && !target; i++) {
@@ -62,5 +66,4 @@ if (out !== '-') {
   console.log('saved', out);
 }
 ws.close();
-chrome.kill();
-process.exit(0);
+quit(0);

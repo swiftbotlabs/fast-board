@@ -30,7 +30,7 @@ export function markdown(md, esc) {
   return html;
 }
 
-/** One bounty: summary, live pot, fee, time left, entries, description, rules, rewards table, dates and status. */
+/** One bounty: summary, live pot, fee, time left, entries, description, rules, rewards table (top 3 marked, amounts aligned to the cent), dates and status. */
 export async function renderBounty(slug, { cachedFetch, patchList, patchText, timeLeft, money, esc }) {
   const path = bountyApi(slug);
   const [b, live] = await Promise.all([cachedFetch(path), cachedFetch(liveApi(slug), { ttl: 20000 }).catch(() => null)]);
@@ -75,14 +75,15 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
       else g.push({ ...r, to: r.place });
       return g;
     }, []);
+    const cents = rows.some((r) => !Number.isInteger(+r.amountUsd) || !Number.isInteger(+r.feeShareUsd)), usd = (v) => (v = money(v), cents && !v.includes('.') ? v + '.00' : v);
     patchList(f('rewards'), groups, (r) => r.place, () => Object.assign(document.createElement('tr'), { innerHTML: '<td><span></span> <small></small></td><td class="n"></td><td class="n"></td><td class="n"><b></b></td>' }), (tr, r) => {
       const td = tr.children;
       td[0].firstChild.className = 'rk' + (r.place < 4 ? ' p p' + r.place : '');
       patchText(td[0].firstChild, r.to === r.place ? r.place : `${r.place}–${r.to}`, false);
       patchText(td[0].lastChild, r.to === r.place ? '' : 'each', false);
-      patchText(td[1], money(r.baseUsd));
-      patchText(td[2], +r.feeShareUsd ? '+' + money(r.feeShareUsd) : '—');
-      patchText(td[3].firstChild, money(r.amountUsd));
+      patchText(td[1], usd(r.baseUsd));
+      patchText(td[2], +r.feeShareUsd ? '+' + usd(r.feeShareUsd) : '—');
+      patchText(td[3].firstChild, usd(r.amountUsd));
     });
   };
   paint(b);
