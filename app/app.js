@@ -1,9 +1,9 @@
-// board + router, the only first-load module: cachedFetch (memory + sessionStorage, ETag revalidation via the HTTP cache, in-flight dedupe), keyed patchList, one shared timeLeft ticker; other views import() on demand
+// board + router, the only first-load module; other views import() on demand
 const boardApi = '/competitions?status=open&activity=times';
 const cache = { mem: new Map(), inflight: new Map(), network: 0, revalidated: 0, hits: 0 };
-let board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false };
+let board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false, q: '', cat: '' };
 
-/** GET an API path once: fresh copies (ttl ms) come from memory or sessionStorage; older ones revalidate by ETag (cache: 'no-cache' makes the browser send If-None-Match; make.fun's 304 lacks CORS headers when sent by hand) and an unchanged ETag reuses the parsed copy. */
+/** GET an API path once: memory/sessionStorage copies within ttl; older ones revalidate by ETag via the HTTP cache (cache: 'no-cache'), reusing the parsed copy if unchanged. */
 async function cachedFetch(path, { ttl = 30000, shape = (json) => json } = {}) {
   let hit = cache.mem.get(path);
   if (!hit) try { hit = JSON.parse(sessionStorage.getItem('mf:' + path)); } catch {}
@@ -35,7 +35,7 @@ function timeLeft(iso) {
 }
 const timeLeftTicker = setInterval(() => document.querySelectorAll('[data-ends]').forEach((el) => patchText(el, timeLeft(el.dataset.ends), false)), 1000);
 
-/** Keyed DOM update: reuse each item's node by key, create only new ones, move only misplaced ones, drop the gone. */
+/** Keyed DOM update: reuse nodes by key, create new ones, move misplaced ones, drop the gone. */
 function patchList(parent, items, key, make, update) {
   const old = new Map([...parent.children].map((el) => [el.dataset.key, el]));
   let at = parent.firstElementChild;
@@ -61,7 +61,7 @@ function patchText(el, text, flash = true) {
 const money = (v) => Number(v || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(+v) ? 0 : 2 });
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** Board: open bounties as keyed cards (live pot biggest, then fee, time left, entries); sort/filter reorders nodes, a 60 s revalidation patches them. */
+/** Board: keyed cards filtered by search, category and fee, sorted, patched by a 60 s revalidation; a card closes once its deadline passes, whatever its status. */
 async function renderBoard() {
   const load = () => cachedFetch(boardApi, {
     shape: (j) => j.items.map((c) => ({
@@ -71,11 +71,17 @@ async function renderBoard() {
   });
   if (!board.el) {
     board.el = document.createElement('section');
-    board.el.innerHTML = '<h1 class="mute" style="font-size:1rem;font-weight:600;margin:0 0 8px">Live bounties: who pays most, costs least and ends soonest</h1><div class="picks"></div><ul class="grid" aria-label="Bounties"></ul>';
+    board.el.innerHTML = '<h1 class="mute" style="font-size:1rem;font-weight:600;margin:0 0 8px">Live bounties: who pays most, costs least and ends soonest</h1><div class="picks"></div><ul class="grid" aria-label="Bounties"></ul><p class="mute" hidden>No bounty matches these filters.</p>';
   }
   const draw = () => {
-    const now = Date.now(), open = (c) => Date.parse(c.ends) > now;
-    const list = board.items.filter((c) => !board.free || !c.fee).sort((a, b) => (open(b) - open(a)) || (board.sort === 'pot' ? b.pot - a.pot : board.sort === 'entries' ? b.entries - a.entries : Date.parse(a.ends) - Date.parse(b.ends)));
+    const now = Date.now(), open = (c) => Date.parse(c.ends) > now, cat = (c) => c.category || 'Bounty', q = board.q.toLowerCase();
+    const counts = {};
+    for (const c of board.items) counts[cat(c)] = (counts[cat(c)] || 0) + 1;
+    const chips = [['', 'All', board.items.length], ...Object.keys(counts).sort().map((k) => [k, k, counts[k]])].map(([k, label, n]) => `<button data-cat="${esc(k)}">${esc(label)} <small>${n}</small></button>`).join('');
+    const catsEl = document.getElementById('cats');
+    if (catsEl.dataset.html !== chips) catsEl.innerHTML = catsEl.dataset.html = chips;
+    document.querySelectorAll('#sort button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat != null ? b.dataset.cat === board.cat : b.dataset.sort === 'free' ? board.free : b.dataset.sort === board.sort));
+    const list = board.items.filter((c) => (!board.free || !c.fee) && (!board.cat || cat(c) === board.cat) && (!q || `${c.title} ${cat(c)} ${c.slug}`.toLowerCase().includes(q))).sort((a, b) => (open(b) - open(a)) || (board.sort === 'pot' ? b.pot - a.pot : board.sort === 'entries' ? b.entries - a.entries : Date.parse(a.ends) - Date.parse(b.ends)));
     const live = board.items.filter(open), top = [...live].sort((a, b) => b.pot - a.pot)[0], next = [...live].sort((a, b) => Date.parse(a.ends) - Date.parse(b.ends))[0];
     board.el.querySelector('.picks').innerHTML = !live.length ? '' :
       `<a href="#/">${live.length} open · <b>${money(live.reduce((s, c) => s + c.pot, 0))}</b> in pots</a>` +
@@ -108,24 +114,29 @@ async function renderBoard() {
       patchText(clock, timeLeft(clock.dataset.ends), false);
       patchText(f('entries'), c.entries.toLocaleString('en-US'));
     });
+    board.el.lastChild.hidden = list.length > 0;
+    clearTimeout(board.flip);
+    const flipAt = Math.min(...board.items.flatMap((c) => [Date.parse(c.ends), Date.parse(c.ends) - 864e5, Date.parse(c.opens)]).filter((t) => t > now));
+    if (flipAt - now < 864e5) board.flip = setTimeout(draw, flipAt - now + 50);
   };
-  document.getElementById('sort').innerHTML = [['soon', 'Ending soon'], ['pot', 'Biggest pot'], ['entries', 'Most entries'], ['free', 'No fee']]
-    .map(([k, label]) => `<button data-sort="${k}" aria-pressed="${k === 'free' ? board.free : board.sort === k}">${label}</button>`).join('');
+  document.getElementById('sort').innerHTML = `<input type=search id=q placeholder="Search bounties" aria-label="Search bounties" value="${esc(board.q)}"><span id=cats role=group aria-label=Category></span><span role=group aria-label=Sort>` +
+    [['soon', 'Ending soon'], ['pot', 'Biggest pot'], ['entries', 'Most entries'], ['free', 'No fee']].map(([k, label]) => `<button data-sort="${k}">${label}</button>`).join('') + '</span>';
+  document.getElementById('q').oninput = (e) => { board.q = e.target.value.trim(); draw(); };
   document.getElementById('sort').onclick = (e) => {
-    const k = e.target.dataset?.sort;
-    if (!k) return;
-    if (k === 'free') board.free = !board.free;
-    else sessionStorage.setItem('mf:sort', (board.sort = k));
-    document.querySelectorAll('[data-sort]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.sort === 'free' ? board.free : b.dataset.sort === board.sort));
+    const { sort: k, cat } = e.target.closest('button')?.dataset || {};
+    if (cat != null) board.cat = cat;
+    else if (k === 'free') board.free = !board.free;
+    else if (k) sessionStorage.setItem('mf:sort', (board.sort = k));
+    else return;
     draw();
   };
   board.items = await load();
   draw();
   const timer = setInterval(async () => { if (!document.hidden) board.items = await load().catch(() => board.items), draw(); }, 60000);
-  return { el: board.el, title: 'make.fun bounties: live pots, fees and deadlines', cleanup: () => { clearInterval(timer); document.getElementById('sort').innerHTML = ''; } };
+  return { el: board.el, title: 'make.fun bounties: live pots, fees and deadlines', cleanup: () => { clearInterval(timer); clearTimeout(board.flip); document.getElementById('sort').innerHTML = ''; } };
 }
 
-/** Footer: this page's own requests and bytes, measured with the Performance API, and what cachedFetch saved. */
+/** Footer: this visit's requests and bytes (Performance API) and what cachedFetch saved. */
 function perfMeter() {
   const res = performance.getEntriesByType('resource'), nav = performance.getEntriesByType('navigation')[0];
   const bytes = res.reduce((s, r) => s + (r.transferSize || 0), nav?.transferSize || 0);

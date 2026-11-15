@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- make.fun bounties: whole first load = this page (inline CSS) + app.js; bounty, leaderboard and profile views load by import() -->
+<!-- first load: this page (inline CSS) + app.js; other views load by import() -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -16,10 +16,16 @@ body{margin:0;background:var(--bg);color:var(--fg)}
 a{color:var(--acc)}
 a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:6px}
 header,main,footer{max-width:1240px;margin:0 auto;padding:0 16px}
-header{display:flex;align-items:center;gap:16px;padding-top:10px;padding-bottom:10px;flex-wrap:wrap}
+header{display:flex;align-items:center;gap:8px 16px;padding-top:10px;padding-bottom:10px;flex-wrap:wrap}
 header>a{color:var(--fg);font-weight:800;font-size:1.15rem;text-decoration:none}
 header>a b{color:var(--pot)}
-nav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+nav{display:contents}
+nav span{display:flex;gap:6px;flex-wrap:wrap}
+nav>:last-child{margin-left:auto}
+#q{flex:1 1 200px;max-width:340px;cursor:text}
+#cats{order:3;flex-basis:100%}
+#cats button{border-radius:99px;padding:2px 12px;font-size:.9rem}
+#cats small{color:inherit;opacity:.75}
 button,select,input{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
 button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--bg);font-weight:700}
 button:disabled{opacity:.45;cursor:default}
@@ -64,7 +70,7 @@ summary{cursor:pointer;font-weight:700}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
 footer{padding-top:24px;padding-bottom:24px;font-size:.82rem;color:var(--mute)}
 .avatar{width:72px;height:72px;border-radius:50%;background:var(--line)}
-@media (max-width:820px){.picks{font-size:.8rem;gap:6px}.picks a{padding:5px 9px}.card h3{min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:1.7rem}td.t{display:none}}
+@media (max-width:820px){.picks{font-size:.8rem;gap:6px}.picks a{padding:5px 9px}.card h3{min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:1.7rem}td.t{display:none}nav span{flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 <script type="module" src="app.js"></script>
