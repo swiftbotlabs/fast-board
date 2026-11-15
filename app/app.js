@@ -61,7 +61,7 @@ function patchText(el, text, flash = true) {
 const money = (v) => Number(v || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(+v) ? 0 : 2 });
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** Board: keyed cards filtered by search, category and fee, sorted, patched by a 60 s revalidation; a card closes once its deadline passes, whatever its status. */
+/** Board: a money-first headline (live pots, open count, next close), then keyed cards filtered by search, category and fee, sorted, patched by a 60 s revalidation; a card turns urgent in its last 24 h and closes once its deadline passes, whatever its status. */
 async function renderBoard() {
   const load = () => cachedFetch(boardApi, {
     shape: (j) => j.items.map((c) => ({
@@ -71,7 +71,7 @@ async function renderBoard() {
   });
   if (!board.el) {
     board.el = document.createElement('section');
-    board.el.innerHTML = '<h1 class="mute" style="font-size:1rem;font-weight:600;margin:0 0 8px">Live bounties: who pays most, costs least and ends soonest</h1><div class="picks"></div><ul class="grid" aria-label="Bounties"></ul><p class="mute" hidden>No bounty matches these filters.</p>';
+    board.el.innerHTML = '<h1 class="lede"></h1><ul class="grid" aria-label="Bounties"></ul><p class="mute" hidden>No bounty matches these filters.</p>';
   }
   const draw = () => {
     const now = Date.now(), open = (c) => Date.parse(c.ends) > now, cat = (c) => c.category || 'Bounty', q = board.q.toLowerCase();
@@ -80,24 +80,19 @@ async function renderBoard() {
     const chips = [['', 'All', board.items.length], ...Object.keys(counts).sort().map((k) => [k, k, counts[k]])].map(([k, label, n]) => `<button data-cat="${esc(k)}">${esc(label)} <small>${n}</small></button>`).join('');
     const catsEl = document.getElementById('cats');
     if (catsEl.dataset.html !== chips) catsEl.innerHTML = catsEl.dataset.html = chips;
-    document.querySelectorAll('#sort button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat != null ? b.dataset.cat === board.cat : b.dataset.sort === 'free' ? board.free : b.dataset.sort === board.sort));
+    document.querySelectorAll('#sort button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat != null ? b.dataset.cat === board.cat : board.free));
     const list = board.items.filter((c) => (!board.free || !c.fee) && (!board.cat || cat(c) === board.cat) && (!q || `${c.title} ${cat(c)} ${c.slug}`.toLowerCase().includes(q))).sort((a, b) => (open(b) - open(a)) || (board.sort === 'pot' ? b.pot - a.pot : board.sort === 'entries' ? b.entries - a.entries : Date.parse(a.ends) - Date.parse(b.ends)));
-    const live = board.items.filter(open), top = [...live].sort((a, b) => b.pot - a.pot)[0], next = [...live].sort((a, b) => Date.parse(a.ends) - Date.parse(b.ends))[0];
-    board.el.querySelector('.picks').innerHTML = !live.length ? '' :
-      `<a href="#/">${live.length} open · <b>${money(live.reduce((s, c) => s + c.pot, 0))}</b> in pots</a>` +
-      `<a href="#/bounty/${esc(top.slug)}">Biggest pot <b>${money(top.pot)}</b> · ${esc(top.title)}</a>` +
-      `<a href="#/bounty/${esc(next.slug)}">Ends next <b data-ends="${next.ends}">${timeLeft(next.ends)}</b> · ${esc(next.title)}</a>` +
-      `<a href="#/">Free to enter <b>${live.filter((c) => !c.fee).length} of ${live.length}</b></a>`;
+    const live = board.items.filter(open), next = [...live].sort((a, b) => Date.parse(a.ends) - Date.parse(b.ends))[0];
+    board.el.firstChild.innerHTML = !live.length ? 'No open bounties right now' : `<span class="pot">${money(live.reduce((s, c) => s + c.pot, 0))}</span> in live pots · <b>${live.length}</b> open · next closes in <a href="#/bounty/${esc(next.slug)}" title="${esc(next.title)}" data-ends="${next.ends}">${timeLeft(next.ends)}</a>`;
     patchList(board.el.querySelector('.grid'), list, (c) => c.slug, (c) => {
       const li = document.createElement('li');
-      li.className = 'card';
       li.innerHTML = `<div class="top"><span data-f="cat"></span><span class="pill" data-f="state"></span></div><h3><a href="#/bounty/${esc(c.slug)}"></a></h3>` +
         '<div class="pot"><span data-f="pot"></span><small data-f="potnote"></small></div>' +
         `<dl class="facts"><div><dt>Entry fee</dt><dd data-f="fee"></dd></div><div><dt data-f="when">Time left</dt><dd data-ends="${c.ends}"></dd></div><div><dt>Entries</dt><dd><a data-f="entries" href="#/bounty/${esc(c.slug)}/leaderboard"></a></dd></div></dl>`;
       return li;
     }, (li, c) => {
       const f = (n) => li.querySelector(`[data-f=${n}]`), left = Date.parse(c.ends) - now, soon = Date.parse(c.opens) > now;
-      li.classList.toggle('closed', left <= 0);
+      li.className = 'card' + (left <= 0 ? ' closed' : !soon && left < 864e5 ? ' urgent' : '');
       patchText(f('cat'), c.category || 'Bounty', false);
       patchText(li.querySelector('h3 a'), c.title, false);
       const state = f('state');
@@ -119,14 +114,15 @@ async function renderBoard() {
     const flipAt = Math.min(...board.items.flatMap((c) => [Date.parse(c.ends), Date.parse(c.ends) - 864e5, Date.parse(c.opens)]).filter((t) => t > now));
     if (flipAt - now < 864e5) board.flip = setTimeout(draw, flipAt - now + 50);
   };
-  document.getElementById('sort').innerHTML = `<input type=search id=q placeholder="Search bounties" aria-label="Search bounties" value="${esc(board.q)}"><span id=cats role=group aria-label=Category></span><span role=group aria-label=Sort>` +
-    [['soon', 'Ending soon'], ['pot', 'Biggest pot'], ['entries', 'Most entries'], ['free', 'No fee']].map(([k, label]) => `<button data-sort="${k}">${label}</button>`).join('') + '</span>';
+  document.getElementById('sort').innerHTML = `<input type=search id=q placeholder="Search bounties" aria-label="Search bounties" value="${esc(board.q)}"><span id=cats role=group aria-label=Category></span><select id=order aria-label="Sort bounties">` +
+    [['soon', 'Ending soon'], ['pot', 'Biggest pot'], ['entries', 'Most entries']].map(([k, label]) => `<option value=${k}>${label}</option>`).join('') + '</select><button data-free>No fee</button>';
+  document.getElementById('order').value = board.sort;
+  document.getElementById('order').onchange = (e) => { sessionStorage.setItem('mf:sort', (board.sort = e.target.value)); draw(); };
   document.getElementById('q').oninput = (e) => { board.q = e.target.value.trim(); draw(); };
   document.getElementById('sort').onclick = (e) => {
-    const { sort: k, cat } = e.target.closest('button')?.dataset || {};
+    const { free, cat } = e.target.closest('button')?.dataset || {};
     if (cat != null) board.cat = cat;
-    else if (k === 'free') board.free = !board.free;
-    else if (k) sessionStorage.setItem('mf:sort', (board.sort = k));
+    else if (free != null) board.free = !board.free;
     else return;
     draw();
   };
