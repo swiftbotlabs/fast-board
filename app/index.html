@@ -43,8 +43,7 @@ h2{font-size:1.05rem;margin:1.2em 0 .5em}
 .urgent{box-shadow:inset 0 3px var(--warn)}
 .urgent [data-ends]{color:var(--warn)}
 .card h3{margin:0;font-size:.98rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
-.card h3 a{text-decoration:none}
-.card h3 a:hover{text-decoration:underline}
+.card h3 a:not(:hover){text-decoration:none}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--mute)}
 .pill{border-radius:99px;padding:1px 8px;font-weight:700;font-size:.74rem;background:color-mix(in srgb,currentColor 13%,transparent);white-space:nowrap}
 .open{color:var(--pot)}.soon{color:var(--warn)}.shut{color:var(--mute)}
@@ -70,8 +69,7 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 .p{background:color-mix(in srgb,var(--pot) 16%,transparent);color:var(--pot)}
 .p1{background:var(--pot);color:var(--card)}
 .prose{max-width:75ch;overflow-wrap:anywhere}
-.prose pre{overflow:auto;background:var(--card);padding:10px;border-radius:8px}
-.prose code{font-size:.9em}
+.prose pre{overflow:auto;background:var(--card);padding:10px;border-radius:8px;font-size:.9em}
 details{margin:12px 0}
 summary{cursor:pointer;font-weight:700}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
