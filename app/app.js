@@ -143,15 +143,22 @@ function perfMeter() {
   document.getElementById('meter').textContent = `This visit: ${res.length + 1} requests, ${(bytes / 1024).toFixed(1)} KB measured by the Performance API · API: ${cache.network} network (${cache.revalidated} unchanged by ETag), ${cache.hits} served from cache · live data from make.fun`;
 }
 
+/** Theme toggle: flips whichever theme is showing (system choice, stored choice or ?theme= hint) and remembers it; the head script applies it before first paint. */
+function themeToggle() {
+  const root = document.documentElement, dark = (root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('mf:theme', root.dataset.theme); } catch {}
+}
+
 const nav = { view: null, seq: 0 };
 
-/** Hash router: #/ board, #/bounty/<slug>, #/bounty/<slug>/leaderboard, #/u/<handle>; views other than the board are import()ed on demand. */
+/** Hash router (anything after ? or & in the hash is ignored, e.g. a theme hint): #/ board, #/bounty/<slug>, #/bounty/<slug>/leaderboard, #/u/<handle>; views other than the board are import()ed on demand. */
 async function route() {
   const my = ++nav.seq;
   window.__shotReady = false;
   nav.view?.cleanup?.();
   nav.view = null;
-  const [, kind, id, sub] = location.hash.split('/').map((s) => decodeURIComponent(s || ''));
+  const [, kind, id, sub] = location.hash.replace(/[?&].*/, '').split('/').map((s) => decodeURIComponent(s || ''));
   const tools = { cachedFetch, patchList, patchText, timeLeft, money, esc };
   let view;
   try {
@@ -175,5 +182,6 @@ async function route() {
 }
 
 addEventListener('hashchange', route);
+document.getElementById('theme').onclick = themeToggle;
 new PerformanceObserver(perfMeter).observe({ type: 'resource', buffered: true });
 route();
