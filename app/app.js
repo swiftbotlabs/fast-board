@@ -1,7 +1,5 @@
 // board + router, the only first-load module: cachedFetch (memory + sessionStorage, ETag revalidation via the HTTP cache, in-flight dedupe), keyed patchList, one shared timeLeft ticker; other views import() on demand
-const API = 'https://make.fun/api';
 const boardApi = '/competitions?status=open&activity=times';
-const app = document.getElementById('app');
 const cache = { mem: new Map(), inflight: new Map(), network: 0, revalidated: 0, hits: 0 };
 let board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false };
 
@@ -9,9 +7,9 @@ let board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 's
 async function cachedFetch(path, { ttl = 30000, shape = (json) => json } = {}) {
   let hit = cache.mem.get(path);
   if (!hit) try { hit = JSON.parse(sessionStorage.getItem('mf:' + path)); } catch {}
-  if (hit && Date.now() - hit.at < ttl) return cache.hits++, meter(), hit.data;
+  if (hit && Date.now() - hit.at < ttl) return cache.hits++, perfMeter(), hit.data;
   if (cache.inflight.has(path)) return cache.inflight.get(path);
-  const get = () => fetch(API + path, { cache: 'no-cache' }).then((res) => (cache.network++, res));
+  const get = () => fetch('https://make.fun/api' + path, { cache: 'no-cache' }).then((res) => (cache.network++, res));
   const request = get()
     .then((res) => res.status >= 500 ? new Promise((ok) => setTimeout(ok, 1500)).then(get) : res)
     .then(async (res) => {
@@ -23,7 +21,7 @@ async function cachedFetch(path, { ttl = 30000, shape = (json) => json } = {}) {
       return hit.data;
     })
     .catch((error) => { if (hit) return hit.data; throw error; })
-    .finally(() => { cache.inflight.delete(path); meter(); });
+    .finally(() => { cache.inflight.delete(path); perfMeter(); });
   cache.inflight.set(path, request);
   return request;
 }
@@ -127,13 +125,12 @@ async function renderBoard() {
 }
 
 /** Footer: this page's own requests and bytes, measured with the Performance API, and what cachedFetch saved. */
-function meter() {
+function perfMeter() {
   const res = performance.getEntriesByType('resource'), nav = performance.getEntriesByType('navigation')[0];
   const bytes = res.reduce((s, r) => s + (r.transferSize || 0), nav?.transferSize || 0);
   document.getElementById('meter').textContent = `This visit: ${res.length + 1} requests, ${(bytes / 1024).toFixed(1)} KB measured by the Performance API · API: ${cache.network} network (${cache.revalidated} unchanged by ETag), ${cache.hits} served from cache · live data from make.fun`;
 }
 
-const tools = { cachedFetch, patchList, patchText, timeLeft, money, esc };
 const nav = { view: null, seq: 0 };
 
 /** Hash router: #/ board, #/bounty/<slug>, #/bounty/<slug>/leaderboard, #/u/<handle>; views other than the board are import()ed on demand. */
@@ -143,6 +140,7 @@ async function route() {
   nav.view?.cleanup?.();
   nav.view = null;
   const [, kind, id, sub] = location.hash.split('/').map((s) => decodeURIComponent(s || ''));
+  const tools = { cachedFetch, patchList, patchText, timeLeft, money, esc };
   let view;
   try {
     view = kind === 'bounty' && sub === 'leaderboard' ? await (await import('./leaderboard.js')).renderLeaderboard(id, tools)
@@ -157,13 +155,13 @@ async function route() {
   }
   if (my !== nav.seq) return view.cleanup?.();
   nav.view = view;
-  app.replaceChildren(view.el);
+  document.getElementById('app').replaceChildren(view.el);
   document.title = view.title;
   scrollTo(0, 0);
-  if (kind) app.focus({ preventScroll: true });
+  if (kind) document.getElementById('app').focus({ preventScroll: true });
   window.__shotReady = true;
 }
 
 addEventListener('hashchange', route);
-new PerformanceObserver(meter).observe({ type: 'resource', buffered: true });
+new PerformanceObserver(perfMeter).observe({ type: 'resource', buffered: true });
 route();
