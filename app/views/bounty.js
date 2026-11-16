@@ -1,39 +1,14 @@
-// bounty page, loaded by import(): one cached detail request (+ /live status); livePot listens to the /live/stream SSE and patches pot, entries and rewards rows in place (60 s polling if the stream drops)
-const bountyApi = (slug) => `/competitions/${encodeURIComponent(slug)}?submissions=summary`;
-const liveApi = (slug) => `/competitions/${encodeURIComponent(slug)}/live`;
-const utcDate = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—';
+// bounty page, import()ed on first visit: one cached detail request (+ /live status), live pot patched in place by keyed updates
+import { markdown } from './markdown.js';
+import { livePot } from './live-pot.js';
 
-/** Small, safe Markdown for descriptions and rules: headings, lists, code, tables, links, bold. */
-export function markdown(md, esc) {
-  const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/)[^)\s]*)\)/g, (_, t, u) => `<a href="${u[0] === '/' ? 'https://make.fun' + u : u}" rel="noopener">${t}</a>`);
-  let html = '', para = [], list = null, rows = null, code = null;
-  const flush = () => {
-    if (para.length) html += `<p>${inline(para.join(' '))}</p>`;
-    if (list) html += `<${list.tag}>${list.items.map((i) => `<li>${inline(i)}</li>`).join('')}</${list.tag}>`;
-    if (rows) html += `<div style="overflow:auto"><table>${rows.map((r, i) => `<tr>${r.map((c) => `<${i ? 'td' : 'th'}>${inline(c)}</${i ? 'td' : 'th'}>`).join('')}</tr>`).join('')}</table></div>`;
-    para = [], list = null, rows = null;
-  };
-  for (const line of String(md || '').split('\n')) {
-    if (code !== null) { if (/^\s*```/.test(line)) html += `<pre><code>${esc(code)}</code></pre>`, code = null; else code += line + '\n'; continue; }
-    if (/^\s*```/.test(line)) { flush(); code = ''; continue; }
-    const h = line.match(/^(#{1,6})\s+(.*)/), li = line.match(/^\s*(?:([-*])|\d+[.)])\s+(.*)/);
-    if (h) flush(), html += `<h${Math.min(h[1].length + 2, 6)}>${inline(h[2])}</h${Math.min(h[1].length + 2, 6)}>`;
-    else if (/^\s*\|/.test(line)) { if (!rows) flush(), rows = []; if (!/^\s*\|[\s:|-]+\|\s*$/.test(line)) rows.push(line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())); }
-    else if (li) { const tag = li[1] ? 'ul' : 'ol'; if (!list || list.tag !== tag) flush(), list = { tag, items: [] }; list.items.push(li[2]); }
-    else if (!line.trim()) flush();
-    else if (list && /^\s+/.test(line)) list.items[list.items.length - 1] += ' ' + line.trim();
-    else { if (list || rows) flush(); para.push(line.trim()); }
-  }
-  if (code !== null) html += `<pre><code>${esc(code)}</code></pre>`;
-  flush();
-  return html;
-}
+const bountyApi = (slug) => `/competitions/${encodeURIComponent(slug)}?submissions=summary`;
+const utcDate = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC' : '—';
 
 /** One bounty: summary, live pot, fee, time left, entries, description, rules, rewards table (top 3 marked, amounts aligned to the cent), dates and status. */
 export async function renderBounty(slug, { cachedFetch, patchList, patchText, timeLeft, money, esc }) {
   const path = bountyApi(slug);
-  const [b, live] = await Promise.all([cachedFetch(path), cachedFetch(liveApi(slug), { ttl: 20000 }).catch(() => null)]);
+  const [b, live] = await Promise.all([cachedFetch(path), cachedFetch(`/competitions/${encodeURIComponent(slug)}/live`, { ttl: 20000 }).catch(() => null)]);
   const ended = Date.parse(b.deadline) <= Date.now(), upcoming = Date.parse(b.opensAt || b.publishedAt) > Date.now();
   const state = b.resolvedAt || b.status === 'resolved' ? ['Resolved', 'open'] : ended ? ['Entries closed', 'shut'] : upcoming ? ['Upcoming', 'soon'] : ['Open for entries', 'open'];
   const el = document.createElement('article');
@@ -89,21 +64,4 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
   paint(b);
   const stop = ended ? () => {} : livePot(slug, async () => paint(await cachedFetch(path, { ttl: 0 })));
   return { el, title: `${b.title} · ${money(b.potUsd || b.rewardAmount)} · make.fun bounties`, cleanup: stop };
-}
-
-/** Live pot: one EventSource on /live/stream; a standings (entry or fee) event re-reads the detail just after the minute turns (make.fun's answers and ETags hold for a minute), so at most one request a minute; falls back to 60 s polling. */
-export function livePot(slug, refresh) {
-  let last = Date.now(), timer = 0, poll = 0;
-  const soon = () => {
-    if (timer) return;
-    const turn = (Math.floor(last / 60000) + 1) * 60000 + 2000;
-    timer = setTimeout(() => { timer = 0; last = Date.now(); refresh().catch(() => {}); }, Math.max(1000, turn - Date.now()));
-  };
-  const stream = 'EventSource' in window ? new EventSource(`https://make.fun/api${liveApi(slug)}/stream`) : null;
-  stream?.addEventListener('standings', soon);
-  stream?.addEventListener('phase', soon);
-  stream?.addEventListener('reset', soon);
-  if (stream) stream.onerror = () => { if (stream.readyState === 2 && !poll) poll = setInterval(soon, 60000); };
-  else poll = setInterval(soon, 60000);
-  return () => { stream?.close(); clearTimeout(timer); clearInterval(poll); };
 }

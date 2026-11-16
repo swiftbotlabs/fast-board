@@ -12,7 +12,7 @@ const profile = mkdtempSync(join(tmpdir(), 'cdp-'));
 const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--no-first-run', '--hide-scrollbars',
   `--user-data-dir=${profile}`, `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
 // each run gets a fresh Chrome profile (~150 MB); remove it once Chrome has exited
-chrome.on('exit', () => rmSync(profile, { recursive: true, force: true }));
+chrome.on('exit', () => { try { rmSync(profile, { recursive: true, force: true, maxRetries: 5 }); } catch {} });
 const quit = (code) => { chrome.kill(); chrome.exitCode !== null || chrome.signalCode ? process.exit(code) : chrome.once('exit', () => process.exit(code)); };
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => quit(1));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -39,6 +39,8 @@ if (process.env.DARK) await send('Emulation.setEmulatedMedia', { features: [{ na
 await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: +w < 600 });
 // hash may be a comma-separated route sequence, followed in-app by setting location.hash
 const hashes = hash.split(',');
+// warm-up: a fresh headless Chrome stalls its first navigation (~18 s before connecting); load a small same-origin file first
+await send('Page.navigate', { url: new URL('/dom-patch.js', base).href }), await sleep(1500), errors.length = 0;
 await send('Page.navigate', { url: base + hashes[0] });
 let ready = false;
 for (const [n, next] of hashes.entries()) {
@@ -59,6 +61,7 @@ if (process.env.WAIT) {
 if (+scrollY) await send('Runtime.evaluate', { expression: `scrollTo(0, ${scrollY})` }), await sleep(300);
 const info = await send('Runtime.evaluate', { expression: 'JSON.stringify({title: document.title, h1: document.querySelector("h1")?.textContent, text: document.querySelector("main").innerText.slice(0, 400), meter: document.getElementById("meter").textContent, overflow: document.documentElement.scrollWidth > innerWidth})', returnByValue: true });
 console.log('ready:', ready, info?.result?.value);
+if (process.env.EVAL) console.log('eval:', (await send('Runtime.evaluate', { expression: process.env.EVAL, returnByValue: true, awaitPromise: true }))?.result?.value);
 console.log('errors:', errors.length ? errors : 'none');
 if (out !== '-') {
   const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 82 });
