@@ -1,8 +1,8 @@
 // Hands in fast-board, a make.fun bounty frontend made of plain static files in app/, all reading make.fun's public
-// API: the first load is app/index.html alone (inline critical CSS and a script that paints the board cards), and
-// everything else arrives after first paint by import(): shell.js (router, theme, ticker) with styles-later.js,
-// api-cache.js, dom-patch.js and speed-meter.js, then board-more.js and app/views/ when opened. Node 22, standard
-// library only.
+// API: the first load is app/index.html alone (a minimal style block, the board row template and one fetch that paints
+// the open bounties), and everything else arrives after first paint by import(): shell.js (router, theme, ticker) with
+// styles-later.js, api-cache.js, dom-patch.js and speed-meter.js, then board-more.js, master-detail.js and app/views/
+// (bounty, leaderboard with windowed-rows.js, profile) when opened. Node 22, standard library only.
 //
 // It checks the entry before packing it: app/index.html must exist, and screenshots/ must hold 1 to 3 .jpg or .png
 // files of at most 256 KiB each (the first by name is the cover). Then it copies app/ and screenshots/ to /output,

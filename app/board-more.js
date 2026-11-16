@@ -58,7 +58,7 @@ export async function renderBoard({ cachedFetch, patchList, patchText, money, ti
     if (flipAt - now < 864e5) board.flip = setTimeout(draw, flipAt - now + 50);
   };
   const bar = document.getElementById('sort');
-  bar.innerHTML = `<input type=search id=q placeholder="Search bounties" aria-label="Search bounties" value="${esc(board.q)}"><span id=cats role=group aria-label=Category></span><select id=order aria-label="Sort bounties">` +
+  bar.innerHTML = `<input type=search id=q placeholder="Search" aria-label="Search bounties" value="${esc(board.q)}"><span id=cats role=group aria-label=Category></span><select id=order aria-label="Sort bounties">` +
     [['soon', 'Ending soon'], ['pot', 'Biggest pot'], ['entries', 'Most entries']].map(([k, label]) => `<option value=${k}>${label}</option>`).join('') + '</select><button data-free>No fee</button>';
   bar.querySelector('#order').value = board.sort;
   bar.querySelector('#order').onchange = (e) => { sessionStorage.setItem('mf:sort', (board.sort = e.target.value)); draw(); };

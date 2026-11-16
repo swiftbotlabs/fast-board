@@ -87,7 +87,7 @@ summary{cursor:pointer;font-weight:700}
 .side .avatar{width:56px;height:56px}
 @media (max-width:1000px){.md{display:block}@media (min-width:1001px){.md .cols{grid-template-columns:minmax(0,1fr) 330px}.md .cols:not(.one) .win .t{display:none}}
 .md>.rows{display:none}}
-@media (max-width:820px){header>a{font-size:.94rem}.lede .pot{font-size:2.2rem}.card h3{height:auto;min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:2.2rem}td.t,th.t{display:none}#cats{order:3;flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}}
+@media (max-width:820px){header>a{font-size:.94rem;flex:1 0 100%}nav:empty+#theme{position:absolute;right:16px;top:8px}#q{flex:1;width:auto;min-width:0}.lede .pot{font-size:2.2rem}.card h3{height:auto;min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:2.2rem}td.t,th.t{display:none}#cats{order:3;flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 `);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];

@@ -1,5 +1,5 @@
 [
-  { "file": "1-board.jpg", "path": "?theme=light#/", "theme": "light", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "2-bounty.jpg", "path": "?theme=dark#/bounty/makefun-frontend-01", "via": "#/", "theme": "dark", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "3-leaderboard.jpg", "path": "?theme=dark#/bounty/threejs-fps-02/leaderboard?u=tidy-meteor-25", "via": "#/", "theme": "dark", "viewport": { "width": 1280, "height": 800 }, "note": "u is the top entrant at shot time; the profile opens in the side panel" }
+  { "file": "1-board-bounty.jpg", "path": "?theme=light#/bounty/makefun-frontend-01", "theme": "light", "viewport": { "width": 1280, "height": 800 }, "note": "master-detail: the board list (from the cached board, no extra request) beside this bounty's page" },
+  { "file": "2-leaderboard-profile.jpg", "path": "?theme=dark#/bounty/threejs-fps-02/leaderboard?u=tidy-meteor-25", "theme": "dark", "viewport": { "width": 1280, "height": 800 }, "note": "windowed leaderboard (5,819 rows, 23 rendered) with the top entrant's profile panel; u is the top entrant at shot time" },
+  { "file": "3-board-phone.jpg", "path": "?theme=dark#/", "theme": "dark", "viewport": { "width": 390, "height": 844 }, "note": "phone layout, mobile emulation" }
 ]
