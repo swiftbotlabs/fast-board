@@ -1,4 +1,4 @@
-// app shell, import()ed after first paint: hash router that import()s each view on first visit, one shared countdown ticker, theme toggle
+// app shell, import()ed after first paint: hash router that import()s each view on first visit
 import './styles-later.js';
 import { cachedFetch } from './api-cache.js';
 import { patchList, patchText } from './dom-patch.js';

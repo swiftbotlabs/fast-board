@@ -1,4 +1,4 @@
-// bounty page, import()ed on first visit: one cached detail request (+ /live status), live pot patched in place by keyed updates
+// bounty page, import()ed on first visit: one cached detail request, live pot patched in place
 import { markdown } from './markdown.js';
 import { livePot } from './live-pot.js';
 

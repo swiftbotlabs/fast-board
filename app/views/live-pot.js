@@ -1,4 +1,4 @@
-// live pot, a static import of the bounty view only: one EventSource instead of polling, at most one re-read a minute
+// live pot: one EventSource instead of polling, at most one re-read a minute
 /** Live pot: one EventSource on /live/stream; a standings (entry or fee) event re-reads the detail just after the minute turns (make.fun's answers and ETags hold for a minute), so at most one request a minute; falls back to 60 s polling. */
 export function livePot(slug, refresh) {
   let last = Date.now(), timer = 0, poll = 0;

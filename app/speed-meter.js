@@ -1,4 +1,4 @@
-// speed footer, import()ed after first paint: first-load gzip size, requests to first paint and paint time, all measured live with the Performance API
+// speed footer: first-load gzip size, requests and paint time, measured live (Performance API)
 import { stats } from './api-cache.js';
 
 const footer = document.body.appendChild(Object.assign(document.createElement('footer'), { id: 'meter', ariaLive: 'off' }));

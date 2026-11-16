@@ -1,4 +1,4 @@
-// public profile, import()ed on first visit (also as the leaderboard's side panel): one cached request (API sends max-age=120 + ETag), entries listed a page at a time through keyed patchList
+// public profile, import()ed on first visit or as the leaderboard's panel: one cached request, paged rows
 
 /** An account's public profile: picture, links, record (entered, placed, won, prizes) and its entries; as a side panel (panel.close: the href that closes it) it is narrower and lists 6 entries a page. */
 export async function renderProfile(handle, { cachedFetch, patchList, patchText, money, esc }, panel = null) {

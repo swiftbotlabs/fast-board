@@ -1,4 +1,4 @@
-// the stylesheet first paint does not need, import()ed after it and adopted as one constructable sheet (index.html inlines only the board cards' rules)
+// rest of the stylesheet, import()ed after first paint and adopted as one constructable sheet
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
 :root{--warn:light-dark(#9a5800,#f2b34c);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}

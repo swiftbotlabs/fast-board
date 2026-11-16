@@ -1,4 +1,4 @@
-// Markdown for descriptions and rules, a static import of the bounty view only: a few dozen lines instead of a library
+// Markdown for the bounty view: a few dozen lines instead of a library
 /** Small, safe Markdown for descriptions and rules: headings, lists, code, tables, links, bold. */
 export function markdown(md, esc) {
   const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')

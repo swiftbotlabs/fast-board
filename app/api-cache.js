@@ -1,4 +1,4 @@
-// API cache for the views, import()ed after first paint: memory + sessionStorage copies, one request per path in flight, stale copies revalidated by ETag
+// API cache: memory + sessionStorage copies, ETag revalidation, one request per path in flight
 export const stats = { network: 0, revalidated: 0, hits: 0 };
 const memory = new Map(), inflight = new Map();
 

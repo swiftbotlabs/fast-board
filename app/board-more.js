@@ -1,4 +1,4 @@
-// board extras, import()ed after the cards are painted: pot headline, search, category chips, sort, No fee filter; takes over index.html's cards by keyed patching and revalidates every 60 s
+// board extras, import()ed after first paint: headline, search, chips, sort, No fee; keyed card takeover
 import { keep } from './api-cache.js';
 
 const board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false, q: '', cat: '' };

@@ -1,4 +1,4 @@
-// leaderboard, import()ed on first visit: one ?rows=first request shaped small before caching, the cached bounty detail reused for prizes, 50 rows a page by keyed patchList, profile panel import()ed on demand
+// leaderboard, import()ed on first visit: ?rows=first shaped small, 50 rows a page, profile panel by import()
 const PAGE_SIZE = 50;
 const profilePanel = () => import('./profile.js');
 const leaderboardApi = (slug) => `/competitions/${encodeURIComponent(slug)}/leaderboard?rows=first`;

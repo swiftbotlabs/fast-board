@@ -1,4 +1,4 @@
-// keyed DOM patching, import()ed after first paint: live updates reuse and move nodes and rewrite only text that changed
+// keyed DOM patching: live updates move nodes and rewrite only the text that changed
 
 /** Keyed list update: reuse nodes by key, create new ones, move misplaced ones, drop the gone. */
 export function patchList(parent, items, key, make, update) {
