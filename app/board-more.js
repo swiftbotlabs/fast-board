@@ -1,26 +1,17 @@
-// board extras, import()ed after first paint: headline, search, chips, sort, No fee; keyed card takeover
-import { keep } from './api-cache.js';
-
+// board view, import()ed after first paint: headline, search, chips, sort, No fee; keyed cards from the cached board
 const board = { el: null, items: [], sort: sessionStorage.getItem('mf:sort') || 'soon', free: false, q: '', cat: '' };
 
 /** The board: a money-first headline (live pots, open count, next close), then keyed cards filtered by search, category and fee, sorted; a card turns urgent in its last 24 h and closes once its deadline passes, whatever its status. */
 export async function renderBoard({ cachedFetch, patchList, patchText, money, timeLeft, esc }) {
-  // first round: what index.html fetched for first paint (fb.board), kept for the next visit; later rounds through cachedFetch
-  const path = '/competitions?status=open&activity=times', firstRound = async () => {
-    const items = await fb.board().catch(() => null);
-    if (!Array.isArray(items)) return cachedFetch(path, { shape: (j) => j.items });
-    keep(path, { at: Date.now(), data: items });
-    return items;
-  };
-  const load = async (first) => (await (first ? firstRound() : cachedFetch(path, { shape: (j) => j.items }))).map((c) => ({
+  // index.html's board request seeded this cache (shell.js), so the first round is a hit; later rounds revalidate by ETag
+  const path = '/competitions?status=open&activity=times';
+  const load = async () => (await cachedFetch(path, { shape: (j) => j.items })).map((c) => ({
     slug: c.slug, title: c.title, category: c.category || 'Bounty', pot: +c.potUsd || c.rewardAmount, fees: +c.entryFeesUsd || 0, fee: +c.entryFeeUsd || 0,
     ends: c.deadline, opens: c.opensAt || c.publishedAt, entries: c.submissionCount,
   }));
   if (!board.el) {
-    // adopt the headline and the grid index.html painted, if it painted them
     board.el = document.createElement('section');
-    board.el.append(...(app.querySelector('.grid') ? app.children : []));
-    if (!board.el.firstChild) board.el.innerHTML = '<h1 class="lede"></h1><ul class="grid"></ul>';
+    board.el.innerHTML = '<h1 class="lede"></h1><ul class="grid"></ul>';
     board.el.querySelector('.grid').ariaLabel = 'Bounties';
     board.el.insertAdjacentHTML('beforeend', '<p class="mute" hidden>No bounty matches these filters.</p>');
   }
@@ -79,8 +70,8 @@ export async function renderBoard({ cachedFetch, patchList, patchText, money, ti
     else return;
     draw();
   };
-  board.items = await load(!board.items.length);
+  board.items = await load();
   draw();
   const timer = setInterval(async () => { if (!document.hidden) board.items = await load().catch(() => board.items), draw(); }, 60000);
-  return { el: board.el, title: 'make.fun bounties: live pots, fees and deadlines', cleanup: () => { clearInterval(timer); clearTimeout(board.flip); bar.innerHTML = ''; } };
+  return { el: board.el, title: document.querySelector('header a').textContent, cleanup: () => { clearInterval(timer); clearTimeout(board.flip); bar.innerHTML = ''; } };
 }

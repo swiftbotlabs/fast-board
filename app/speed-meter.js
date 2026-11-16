@@ -1,4 +1,4 @@
-// speed footer: first-load gzip size, requests and paint time, measured live (Performance API)
+// speed footer: first-load gzip size, paint time and a live request counter, measured live (Performance API)
 import { stats } from './api-cache.js';
 
 const footer = document.body.appendChild(Object.assign(document.createElement('footer'), { id: 'meter', ariaLive: 'off' }));
@@ -16,13 +16,13 @@ const measureFirstLoad = async (paint) => {
 export async function meter(viewMs = at.view) {
   at.view = viewMs;
   // measured once first paint is marked (by index.html, or by the shell's first view on a deep link)
-  const paint = performance.getEntriesByName('fb-paint')[0]?.startTime;
+  const paint = performance.getEntriesByName('paint')[0]?.startTime;
   if (paint == null) return;
   const load = await (at.load ||= measureFirstLoad(paint).catch(() => null));
   if (!load) return;
   const api = performance.getEntriesByType('resource').filter((r) => r.name.startsWith('https://make.fun/api/')).length;
-  footer.innerHTML = `<strong>First load ${(load.bytes / 1024).toFixed(1)} KB gzip</strong> (${load.files} file${load.files > 1 ? 's' : ''}) · <strong>${load.requests} requests</strong> · <strong>painted in ${Math.round(load.paint)} ms</strong>` +
-    ` · this view in ${Math.round(at.view)} ms · API: ${api} request${api === 1 ? '' : 's'}, ${stats.revalidated} unchanged by ETag, ${stats.hits} from cache`;
+  footer.innerHTML = `<strong>First load ${(load.bytes / 1024).toFixed(2)} KB gzip</strong> (${load.files} file${load.files > 1 ? 's' : ''}, ${load.requests} requests) · <strong>painted in ${Math.round(load.paint)} ms</strong>` +
+    ` · this view in ${Math.round(at.view)} ms · <strong class="live">${api} API request${api === 1 ? '' : 's'}</strong> (live count) · ${stats.revalidated} unchanged by ETag, ${stats.hits} from cache`;
 }
 
 new PerformanceObserver(() => { cancelAnimationFrame(at.frame); at.frame = requestAnimationFrame(() => meter()); }).observe({ type: 'resource' });

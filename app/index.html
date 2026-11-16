@@ -1,36 +1,21 @@
 <!doctype html>
-<!-- first load in one file: inline CSS, board painted from an ETag cache, the rest by import() -->
-<html lang=en id=R>
+<!-- one-file first paint -->
+<html lang=en>
 <meta name=viewport content=width=device-width>
-<title>make.fun bounties</title>
-<link rel=icon href=data:,>
+<title>Fast Board: the make.fun board in 0.8 KB</title>
 <style>
-:root{color-scheme:light dark;--bg:light-dark(#f7f4ee,#0e1014);--card:light-dark(#fff,#181b21);--line:light-dark(#e7e1d6,#2b3039);--fg:light-dark(#17140f,#eceef2);--mute:light-dark(#666057,#a0a6b1);--pot:light-dark(#0a7a42,#3fdc85);font:15px/1.45 system-ui}
-body{margin:0;background:var(--bg);color:var(--fg)}
+:root{color-scheme:light dark;font:15px system-ui;background:light-dark(#f7f4ee,#0e1014);max-width:1240px;margin:auto}
 a{color:inherit;text-decoration:none}
-header,main{max-width:1240px;margin:auto;padding:0 16px}
-header{padding-block:15px}
-header>a{font-weight:800;font-size:1.1rem}
-b,.pot{color:var(--pot)}
-.lede{min-height:56px;margin:0 0 14px}
-.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));padding:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
-.card h3{margin:0;font-size:.98rem;line-height:1.3;height:2.6em;overflow:hidden}
-.top,dt{font-size:.8rem;color:var(--mute)}
-.pot{font-size:2.7rem;font-weight:800;line-height:1.05}
-.card dl{margin:0;display:grid;grid-template-columns:.75fr 1.35fr .9fr;gap:8px;border-top:1px solid var(--line);padding-top:8px}
-dt{font-size:.7rem;text-transform:uppercase;font-weight:600}
-dd{margin:0;font-weight:700}
-@media (max-width:820px){.pot{font-size:2.2rem}}
+b{color:light-dark(#0a7a42,#3fdc85)}
+.rows{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.rows>a{display:grid;grid:auto/1fr auto;gap:4px;padding:9px;border-radius:9px;background:#8882}
 </style>
+<header><a href=#/>Fast Board: the make.fun board in 0.8 KB</a></header>
+<main id=app class=rows>
 <script>
-var p=n=>(n+'').padStart(2,0),fb={
-money:v=>'$'+(+v||0).toLocaleString('en',{minimumFractionDigits:v%1&&2}),
-left(t,s=(Date.parse(t)-Date.now())/1e3|0){return s>0?s>86399?`${s/86400|0}d ${p(s/3600%24|0)}h ${p(s/60%60|0)}m`:`${s/3600|0}h ${p(s/60%60|0)}m ${p(s%60)}s`:'ended'},
-async board(k='mf:/competitions?status=open&activity=times',h=JSON.parse(sessionStorage[k]||0),r){if(Date.now()-h.at<3e4)return h.data
-r=await fetch('https://make.fun/api'+k.slice(3),{cache:'no-cache'});return(await r.json()).items}},B=!/^#\/[^?&]/.test(location.hash)&&fb.board();
-onload=async(e,n=new Date().toISOString())=>{try{app.innerHTML='<h1 class=lede></h1><ul class=grid>'+(await B).sort((a,b)=>(a.deadline<n)-(b.deadline<n)||(a.deadline>b.deadline)-.5).map(c=>`<li class=card><div class=top>${c.category}</div><h3>${c.title.replace(/</g,'&lt;')}</h3><div class=pot>${fb.money(c.potUsd||c.rewardAmount)}</div><dl><div><dt>Entry fee<dd>${+c.entryFeeUsd?fb.money(c.entryFeeUsd):'Free'}</div><div><dt>Time left<dd>${fb.left(c.deadline)}</div><div><dt>Entries<dd>${c.submissionCount.toLocaleString('en')}</div></dl>`).join('')+'</ul>';performance.mark('fb-paint')}catch{}import('./shell.js')}
-R.style.colorScheme=/[?&#]theme=(dark|light)/.exec(location.href)?.[1]||localStorage['mf:theme']
+var M=v=>'$'+(+v).toLocaleString('en'),
+L=t=>(t=(Date.parse(t)-Date.now())/36e5)>0?`${t/24|0}d ${t%24|0}h`:'ended',
+row=c=>`<a href=#/bounty/${c.slug}>${c.title.replace(/</g,'&lt;')}<b>${M(c.potUsd)}</b>${+c.entryFeeUsd?M(c.entryFeeUsd)+' fee':'Free'}<span data-ends=${c.deadline}>${L(c.deadline)}</span></a>`,
+B=fetch('https://make.fun/api/competitions?status=open&activity=times').then(r=>r.json());
+B.then(j=>{app.innerHTML=j.items.sort((a,b)=>a.deadline<b.deadline||-1).map(row).join('');performance.mark('paint')}).finally(_=>import('./shell.js'))
 </script>
-<header><a href=#/>make<b>.fun</b> bounties</a><nav id=sort></nav></header>
-<main id=app>Loading live bounties…</main>

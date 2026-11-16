@@ -63,5 +63,5 @@ export async function renderBounty(slug, { cachedFetch, patchList, patchText, ti
   };
   paint(b);
   const stop = ended ? () => {} : livePot(slug, async () => paint(await cachedFetch(path, { ttl: 0 })));
-  return { el, title: `${b.title} · ${money(b.potUsd || b.rewardAmount)} · make.fun bounties`, cleanup: stop };
+  return { el, title: `${b.title} · ${money(b.potUsd || b.rewardAmount)} · Fast Board`, cleanup: stop };
 }

@@ -1,17 +1,33 @@
 // rest of the stylesheet, import()ed after first paint and adopted as one constructable sheet
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
-:root{--warn:light-dark(#9a5800,#f2b34c);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+:root{--bg:light-dark(#f7f4ee,#0e1014);--card:light-dark(#fff,#181b21);--line:light-dark(#e7e1d6,#2b3039);--fg:light-dark(#17140f,#eceef2);--mute:light-dark(#666057,#a0a6b1);--pot:light-dark(#0a7a42,#3fdc85);--warn:light-dark(#9a5800,#f2b34c);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;color:var(--fg)}
+body{margin:0 16px}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));padding:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.card h3{margin:0;font-size:.98rem;line-height:1.3;height:2.6em;overflow:hidden}
+.top{font-size:.8rem;color:var(--mute)}
+.pot{font-size:2.7rem;font-weight:800;line-height:1.05}
+.card dl{border-top:1px solid var(--line);padding-top:8px}
+dd{margin:0;font-weight:700}
+.md{display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;align-items:start}
+@media (min-width:1001px){.md .cols{grid-template-columns:minmax(0,1fr) 330px}.md .cols:not(.one) .win .t{display:none}}
+.md>.rows{display:flex;flex-direction:column;gap:6px;position:sticky;top:8px;max-height:calc(100vh - 60px);overflow:auto;padding:2px;scrollbar-width:thin}
+.rows>a{background:var(--card);border:1px solid var(--line);font-size:.86rem;line-height:1.3}
+.rows>a b{font-size:1.25rem;line-height:1.1;text-align:right;color:var(--pot)}
+.rows>a span{text-align:right;color:var(--mute)}
+.rows>a[aria-current]{outline:2px solid var(--pot);background:color-mix(in srgb,var(--pot) 10%,var(--card))}
+.rows>a.closed{opacity:.55}
 a{text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:2px}
-header>a,.card h3 a:not(:hover){text-decoration:none}
+header>a,.rows>a,.card h3 a:not(:hover){text-decoration:none}
 b{color:inherit}header b,.pot{color:var(--pot)}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px;border-radius:6px}
 main{padding-bottom:24px}
 *{box-sizing:border-box}
-header{display:flex;align-items:center;gap:8px;padding-block:12px;min-height:56px;flex-wrap:wrap}
+header{display:flex;align-items:center;gap:8px;padding-block:12px;min-height:56px;flex-wrap:wrap;font-weight:400;font-size:inherit}header>a{font-weight:800;font-size:1.05rem}
 nav{display:contents}
 nav span{display:flex;gap:4px;flex-wrap:wrap}
-#q{width:190px;cursor:text}
+#q{width:150px;cursor:text}
 #order,nav:empty+#theme{margin-left:auto}
 #theme::before{content:"";display:block;width:14px;height:14px;margin:2px -2px;border:2px solid;border-radius:50%;box-shadow:inset 5px 0 currentColor}
 #cats button{border-radius:99px}
@@ -61,12 +77,17 @@ th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertic
 .prose pre{overflow:auto;background:var(--card);padding:10px;border-radius:8px;font-size:.9em}
 details{margin:12px 0}
 summary{cursor:pointer;font-weight:700}
+.win{max-height:min(66vh,620px);overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--card);overscroll-behavior:contain}
+.win thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.win tr{height:37px}.win tr[aria-hidden]{height:auto}.win td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;padding-block:0;vertical-align:middle}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
-#meter{position:sticky;bottom:0;padding:7px max(16px,calc(50% - 604px));font-size:.8rem;color:var(--mute);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(6px);border-top:1px solid var(--line)}
+#meter{position:sticky;bottom:0;padding:7px 0;font-size:.8rem;color:var(--mute);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(6px);border-top:1px solid var(--line)}
 #meter strong{color:var(--fg)}
 .avatar{width:72px;height:72px;border-radius:50%;background:var(--line)}
 .side .avatar{width:56px;height:56px}
-@media (max-width:820px){.lede .pot{font-size:2.2rem}.card h3{height:auto;min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:2.2rem}td.t,th.t{display:none}#cats{order:3;flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}}
+@media (max-width:1000px){.md{display:block}@media (min-width:1001px){.md .cols{grid-template-columns:minmax(0,1fr) 330px}.md .cols:not(.one) .win .t{display:none}}
+.md>.rows{display:none}}
+@media (max-width:820px){header>a{font-size:.94rem}.lede .pot{font-size:2.2rem}.card h3{height:auto;min-height:0}.cols{grid-template-columns:1fr}.side{position:static}.pot{font-size:2.2rem}td.t,th.t{display:none}#cats{order:3;flex:1 0 100%;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 `);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];

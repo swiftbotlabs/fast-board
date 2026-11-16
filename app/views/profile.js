@@ -40,5 +40,5 @@ ${p.bio ? `<p>${esc(p.bio)}</p>` : ''}
   };
   more.onclick = () => { shown += pageSize; draw(); };
   draw();
-  return { el, title: `${p.display_name || p.handle} · make.fun profile` };
+  return { el, title: `${p.display_name || p.handle} · Fast Board` };
 }
