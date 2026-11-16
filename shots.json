@@ -1,5 +1,5 @@
 [
   { "file": "1-board.jpg", "path": "?theme=light#/", "theme": "light", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "2-bounty.jpg", "path": "?theme=dark#/bounty/makefun-frontend-01", "theme": "dark", "viewport": { "width": 1280, "height": 800 } },
-  { "file": "3-leaderboard.jpg", "path": "?theme=dark#/bounty/threejs-fps-02/leaderboard", "theme": "dark", "viewport": { "width": 1280, "height": 800 } }
+  { "file": "2-bounty.jpg", "path": "?theme=dark#/bounty/makefun-frontend-01", "via": "#/", "theme": "dark", "viewport": { "width": 1280, "height": 800 } },
+  { "file": "3-leaderboard.jpg", "path": "?theme=dark#/bounty/threejs-fps-02/leaderboard?u=tidy-meteor-25", "via": "#/", "theme": "dark", "viewport": { "width": 1280, "height": 800 }, "note": "u is the top entrant at shot time; the profile opens in the side panel" }
 ]

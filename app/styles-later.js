@@ -36,7 +36,7 @@ h2{font-size:1.05rem;margin:1.2em 0 .5em}
 .pill{border-radius:99px;padding:1px 8px;font-weight:700;font-size:.74rem;background:color-mix(in srgb,currentColor 13%,transparent);white-space:nowrap}
 .open{color:var(--pot)}.soon{color:var(--warn)}.shut{color:var(--mute)}
 .pot{letter-spacing:-.02em}
-.pot small{font-size:.78rem;font-weight:600;letter-spacing:0;margin-left:6px}
+.pot small{font-size:.78rem;font-weight:600;letter-spacing:0;margin-left:6px;display:inline-block;white-space:nowrap}
 .facts,.card dl{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.35fr) minmax(0,.9fr);gap:8px;margin:0}
 .facts div,.card dl div{min-width:0}
 dt,th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);font-weight:600}
